@@ -1,0 +1,9 @@
+import{StorageService as e}from"./storage.js";var t=0,n=[];function r(e){return{id:t++,name:e,date:Date.now()}}function i(){let e=document.getElementById(`groupList`);if(!e){console.error(`element of group list is not found`);return}if(e.innerHTML=``,n.length===0){let t=document.createElement(`div`);t.className=`empty-message`,t.textContent=`Нет созданных групп`,e.appendChild(t);return}for(let t of n){let n=document.createElement(`li`);n.textContent=t.name;let r=new Date(t.date).toLocaleString(`ru-RU`);n.innerHTML=`
+            <div class="group-info">
+                <span class="group-name"><strong>${t.id}.</strong> ${t.name}</span>
+                <small class="group-date">${r}</small>
+            </div>
+            
+            <!-- 🔹 Кнопка удаления для ЭТОЙ группы -->
+            <button class="delete-btn" data-id="${t.id}">✕ Удалить</button>
+        `,e.appendChild(n)}a()}function a(){document.querySelectorAll(`.delete-btn`).forEach(e=>{e.addEventListener(`click`,e=>{let t=e.target;o(Number(t.dataset.id))})})}async function o(t){let r=n.findIndex(e=>e.id===t);if(r!==-1){let t=n.splice(r,1)[0];try{await e.saveGroups(n)}catch(e){console.error(e)}i(),console.log(`🗑️ Группа "${t}" удалена`),console.log(`📋 Осталось групп:`,n)}}document.addEventListener(`DOMContentLoaded`,async()=>{let r=await e.loadGroups();n.push(...r),n.length>0&&(t=Math.max(...n.map(e=>e.id))+1),i()}),document.getElementById(`button`)?.addEventListener(`click`,()=>{s?.classList.toggle(`hidden`),s?.classList.contains(`hidden`)||s?.focus()});var s=document.getElementById(`groupInput`);s?.addEventListener(`keypress`,async t=>{if(t.key==`Enter`){let t=s.value.trim();if(t){let a=r(t);n.push(a);try{await e.saveGroups(n)}catch(e){console.error(e)}i(),console.log(`✅ Группа создана:`,a),console.log(`📋 Все группы:`,n),alert(`Группа "${t}" создана! ID: ${a.id}`),s.value=``,s.classList.add(`hidden`)}else alert(`Введите название группы!`)}});

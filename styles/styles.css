@@ -1,0 +1,133 @@
+/* Базовые стили */
+body {
+    font-family: system-ui, -apple-system, sans-serif;
+    padding: 20px;
+    max-width: 600px;
+    margin: 0 auto;
+    background: #f9f9f9;
+}
+
+h1 {
+    color: #333;
+    font-size: 24px;
+}
+
+/* Скрытие элементов */
+.hidden {
+    display: none !important;
+}
+
+/* Контейнер для кнопки и поля ввода */
+.controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+/* Кнопка */
+button {
+    padding: 10px 20px;
+    cursor: pointer;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: background 0.2s;
+}
+
+button:hover {
+    background: #45a049;
+}
+
+button:active {
+    transform: scale(0.98);
+}
+
+/* Поле ввода */
+#groupInput {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    width: 250px;
+    font-size: 14px;
+    transition: border-color 0.2s;
+}
+
+#groupInput:focus {
+    outline: none;
+    border-color: #4CAF50;
+}
+
+
+ /* ✅ Список групп — вертикальный */
+#groupList {
+    list-style: none;  /* убираем точки */
+    padding: 0;
+    margin: 20px 0;
+    display: flex;
+    flex-direction: column;  /* ← вертикально! */
+    gap: 10px;  /* расстояние между элементами */
+}
+
+/* ✅ Каждый элемент списка */
+#groupList li {
+    background: #f5f5f5;
+    padding: 12px 16px;
+    border-radius: 6px;
+    border-left: 4px solid #4CAF50;  /* зелёная полоска слева */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* ✅ Название группы */
+#groupList li strong {
+    color: #333;
+    font-size: 16px;
+}
+
+/* ✅ Дата */
+#groupList li small {
+    color: #888;
+    font-size: 12px;
+}
+
+/* Информация о группе */
+.group-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.group-name {
+    font-weight: 500;
+    color: #333;
+}
+
+.group-date {
+    font-size: 12px;
+    color: #888;
+}
+
+/* Кнопка удаления */
+.delete-btn {
+    padding: 6px 12px;
+    background: #f44336;
+    font-size: 12px;
+}
+
+.delete-btn:hover {
+    background: #da190b;
+}
+
+/* Сообщение "пусто" */
+.empty-message {
+    text-align: center;
+    color: #999;
+    padding: 40px;
+    font-style: italic;
+}

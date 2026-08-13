@@ -1,0 +1,12 @@
+{
+  "name": "youtube-groups",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.2.2",
+    "vite": "^8.0.16"
+  }
+}

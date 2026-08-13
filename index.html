@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Создание группы</title>
+
+    <link rel="stylesheet" href="styles/styles.css">
+
+</head>
+
+<body>
+
+    <!-- Ваша кнопка
+    <button id="button">Create a new group</button>
+
+    Поле для ввода (изначально скрыто классом hidden) -->
+    <!-- <input type="text" id="groupInput" class="hidden" placeholder="Введите название группы"> -->
+
+    <!-- 
+    <ul id="groupList"></ul> ← Сюда будем добавлять группы -->
+
+    <!-- тс скрипт -->
+    <!-- <script type="module" src="/src/popup.ts"></script> -->
+
+
+    <h1>Мои группы</h1>
+
+    <!-- Контейнер для кнопки и поля -->
+    <div class="controls">
+        <button id="button">Create a new group</button>
+        <input type="text" id="groupInput" class="hidden" placeholder="Введите название группы">
+    </div>
+
+
+    <div class="Список групп">
+        <ul id="groupList"></ul>
+         <!-- <button id="delete"></button> Так она в единственном числе появляется  -->
+    </div>
+
+
+    <!-- ✅ Подключаем СКОМПИЛИРОВАННЫЙ JS -->
+    <!-- <script src="dist/popup.js"></script> -->
+    <script type="module" src="/src/popup/popup.ts"></script>
+
+</body>
+
+</html>

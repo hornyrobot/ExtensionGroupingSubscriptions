@@ -1,0 +1,1 @@
+var e=class{static GROUPS_KEY=`groups`;static async saveGroups(e){await chrome.storage.local.set({[this.GROUPS_KEY]:e})}static async loadGroups(){return(await chrome.storage.local.get(this.GROUPS_KEY))[this.GROUPS_KEY]??[]}static async clearGroups(){}};export{e as StorageService};

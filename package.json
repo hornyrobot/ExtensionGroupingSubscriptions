@@ -1,0 +1,15 @@
+{
+  "scripts": {
+     "name": "youtube-groups",
+  "version": "1.0.0",
+    "type": "module", 
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.254",
+    "@types/node": "^26.1.1",
+    "vite": "^8.1.5"
+  }
+}
