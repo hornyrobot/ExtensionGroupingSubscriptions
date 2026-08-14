@@ -1,3 +1,5 @@
+import "./content.css";
+
 console.log("🎬 YouTube Groups: content script запущен");
 
 function getChannelInfo(): void {
