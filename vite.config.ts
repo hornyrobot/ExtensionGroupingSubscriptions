@@ -1,49 +1,37 @@
-// import { defineConfig } from 'vite';
-// import { resolve, dirname } from 'path';
-// import { fileURLToPath } from 'url';
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { defineConfig, type Plugin } from "vite";
 
-// const __dirname = dirname(fileURLToPath(import.meta.url));
+function flattenPopupHtml(): Plugin {
+  return {
+    name: "flatten-popup-html",
+    apply: "build",
+    closeBundle() {
+      const nested = resolve("dist/src/popup/popup.html");
+      if (!existsSync(nested)) return;
 
-// export default defineConfig({
-//   build: {
-//     outDir: 'dist',
-//     emptyOutDir: true,
-//     rollupOptions: {
-//       input: {
-//         popup: resolve(__dirname, 'src/popup/popup.ts'),
-//         background: resolve(__dirname, 'src/background.ts'),
-//         content: resolve(__dirname, 'src/content/content.ts'),
-//         storage: resolve(__dirname, 'src/storage/storage.ts'),
-//       },
-//       output: {
-//         entryFileNames: '[name].js',
-//         chunkFileNames: 'chunks/[name].[hash].js',
-//         assetFileNames: 'assets/[name].[hash][extname]',
-//         // Для background используем iife, чтобы убрать import/export
-//         manualChunks: (id) => {
-//           if (id.includes('background')) return undefined; // background всегда отдельный файл
-//         }
-//       }
-//     }
-//   }
-// });
-
-import { defineConfig } from "vite";
+      const html = readFileSync(nested, "utf8").replaceAll("../", "");
+      writeFileSync(resolve("dist/popup.html"), html);
+      rmSync(resolve("dist/src"), { recursive: true, force: true });
+    },
+  };
+}
 
 export default defineConfig({
-    build: {
-        rollupOptions: {
-            input: {
-                popup: "popup.html",
-
-                background: "src/background.ts",
-                content: "src/content/content.ts"
-            },
-
-            output: {
-                entryFileNames: "[name].js",
-                assetFileNames: "[name][extname]"
-            }
-        }
-    }
+  base: "./",
+  publicDir: "public",
+  build: {
+    outDir: "dist",
+    emptyOutDir: true,
+    modulePreload: false,
+    rollupOptions: {
+      input: resolve("src/popup/popup.html"),
+      output: {
+        entryFileNames: "[name].js",
+        chunkFileNames: "chunks/[name].js",
+        assetFileNames: "[name][extname]",
+      },
+    },
+  },
+  plugins: [flattenPopupHtml()],
 });
