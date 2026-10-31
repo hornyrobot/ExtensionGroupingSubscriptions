@@ -60,6 +60,45 @@ button:active {
     border-color: #4CAF50;
 }
 
+.transfer {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.ghost-btn,
+.move-btn {
+    background: #e8e8e8;
+    color: #333;
+    font-size: 13px;
+}
+
+.ghost-btn {
+    padding: 8px 10px;
+}
+
+.move-btn {
+    padding: 6px 8px;
+    min-width: 28px;
+}
+
+.ghost-btn:hover,
+.move-btn:hover {
+    background: #dadada;
+}
+
+.move-btn:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+.hint {
+    margin: 0 0 12px;
+    color: #777;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
 .status {
     margin: 0 0 12px;
     font-size: 13px;
@@ -96,6 +135,13 @@ button:active {
     justify-content: space-between;
     align-items: center;
     gap: 8px;
+}
+
+.group-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
 }
 
 .group-info {

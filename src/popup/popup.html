@@ -21,6 +21,13 @@
         >
     </div>
 
+    <div class="transfer">
+        <button id="exportButton" type="button" class="ghost-btn">Скачать файл</button>
+        <button id="importButton" type="button" class="ghost-btn">Загрузить файл</button>
+        <input id="importFile" class="hidden" type="file" accept="application/json,.json">
+    </div>
+    <p class="hint">Файл можно открыть на другом компьютере. Вход в YouTube группы не переносит: они лежат в браузере. Если в Chrome включена синхронизация того же Google-аккаунта, список подтянется сам.</p>
+
     <p id="status" class="status hidden" role="status"></p>
 
     <ul id="groupList"></ul>

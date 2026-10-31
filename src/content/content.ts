@@ -1,7 +1,7 @@
 import "./content.css";
 
 import type { ChannelDraft } from "./channelPage";
-import { findChannelHeaderAnchor, isChannelPath, readChannelInfo, renderAddButton } from "./channelPage";
+import { channelMatches, cleanChannelName, findChannelHeaderAnchor, isChannelPath, readChannelInfo, renderAddButton } from "./channelPage";
 import { renderGuide } from "./guide";
 import type { Channel } from "../models/Channel";
 import { StorageService, type StorageSnapshot } from "../storage/storage";
@@ -13,6 +13,7 @@ let snapshot: StorageSnapshot = {
     groups: [],
     channels: [],
     collapsedGroupIds: [],
+    revision: 0,
 };
 let channelDraft: ChannelDraft | null = null;
 let refreshToken = 0;
@@ -43,6 +44,14 @@ function paintGuide(): void {
             else collapsed.add(groupId);
 
             void StorageService.saveCollapsed([...collapsed]).catch((error: unknown) => {
+                console.error(error);
+            });
+        },
+        onMove(groupId, direction) {
+            const groups = StorageService.reorder(snapshot.groups, groupId, direction);
+            if (!groups) return;
+
+            void StorageService.saveGroups(groups).catch((error: unknown) => {
                 console.error(error);
             });
         },
@@ -77,12 +86,14 @@ function paintAddButton(): void {
         : undefined;
 
     renderAddButton(host, snapshot.groups, current, (group) => {
-        if (!channelDraft) return;
+        const fresh = readChannelInfo(true) ?? channelDraft;
+        const name = cleanChannelName(fresh?.name);
+        if (!fresh || !name) return;
 
         const channel: Channel = {
-            id: channelDraft.id,
-            name: channelDraft.name,
-            url: channelDraft.url,
+            id: fresh.id,
+            name,
+            url: fresh.url,
             groupId: group.id,
         };
 
@@ -115,10 +126,36 @@ async function refreshChannel(): Promise<void> {
         const host = document.getElementById(ADD_ID);
         const anchor = findChannelHeaderAnchor();
         const anchored = anchor !== null && host?.previousElementSibling === anchor;
-        if (channelDraft && anchored) return;
+        if (channelDraft && anchored) {
+            repairStoredName(channelDraft);
+            return;
+        }
 
         await delay(200);
     }
+}
+
+function repairStoredName(draft: ChannelDraft): void {
+    const name = cleanChannelName(draft.name);
+    if (!name) return;
+
+    const stored = snapshot.channels.find((channel) => channelMatches(channel, draft));
+    if (!stored || (stored.id === draft.id && stored.name === name && stored.url === draft.url)) return;
+
+    const channel: Channel = {
+        id: draft.id,
+        name,
+        url: draft.url,
+        groupId: stored.groupId,
+    };
+
+    const write = stored.id === draft.id
+        ? StorageService.upsertChannel(channel)
+        : StorageService.replaceChannel(stored.id, channel);
+
+    void write.catch((error: unknown) => {
+        console.error(error);
+    });
 }
 
 function delay(ms: number): Promise<void> {

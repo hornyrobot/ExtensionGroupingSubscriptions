@@ -2,6 +2,7 @@ import type { StorageSnapshot } from "../storage/storage";
 
 export interface GuideActions {
     onToggle(groupId: number): void;
+    onMove(groupId: number, direction: -1 | 1): void;
 }
 
 export function renderGuide(
@@ -27,8 +28,11 @@ export function renderGuide(
 
     const collapsed = new Set(snapshot.collapsedGroupIds);
 
-    for (const group of snapshot.groups) {
+    snapshot.groups.forEach((group, index) => {
         const isCollapsed = collapsed.has(group.id);
+        const row = document.createElement("div");
+        row.className = "yt-group-row";
+
         const toggle = document.createElement("button");
         toggle.type = "button";
         toggle.className = "yt-group-toggle";
@@ -39,9 +43,15 @@ export function renderGuide(
             event.stopPropagation();
             actions.onToggle(group.id);
         });
-        host.append(toggle);
 
-        if (isCollapsed) continue;
+        row.append(
+            toggle,
+            moveButton("↑", "Выше", index === 0, () => actions.onMove(group.id, -1)),
+            moveButton("↓", "Ниже", index === snapshot.groups.length - 1, () => actions.onMove(group.id, 1)),
+        );
+        host.append(row);
+
+        if (isCollapsed) return;
 
         const groupChannels = snapshot.channels.filter((channel) => channel.groupId === group.id);
         const list = document.createElement("div");
@@ -63,7 +73,22 @@ export function renderGuide(
         }
 
         host.append(list);
-    }
+    });
+}
+
+function moveButton(label: string, hint: string, disabled: boolean, onClick: () => void): HTMLButtonElement {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "yt-group-move";
+    button.textContent = label;
+    button.title = hint;
+    button.disabled = disabled;
+    button.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onClick();
+    });
+    return button;
 }
 
 function safeChannelUrl(url: string): string {
