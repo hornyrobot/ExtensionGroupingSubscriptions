@@ -1,1 +1,0 @@
-console.log(`🎬 YouTube Groups: content script запущен`);function e(){console.log(`📍 Текущий URL:`,window.location.href);let e=document.querySelector(`ytd-channel-name #text`);if(!e){console.log(`❌ Название канала пока не найдено`);return}let t=e.textContent?.trim();console.log(`📺 Канал:`,t)}e();

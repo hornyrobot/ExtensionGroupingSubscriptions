@@ -11,21 +11,21 @@
     <h1>Мои группы</h1>
 
     <div class="controls">
-        <button id="button">Создать группу</button>
-
+        <button id="button" type="button">Создать группу</button>
         <input
             type="text"
             id="groupInput"
             class="hidden"
+            maxlength="80"
             placeholder="Введите название группы"
         >
     </div>
 
-    <div>
-        <ul id="groupList"></ul>
-    </div>
+    <p id="status" class="status hidden" role="status"></p>
 
-    <script type="module" src="/src/popup/popup.ts"></script>
+    <ul id="groupList"></ul>
+
+    <script type="module" src="./popup.ts"></script>
 
 </body>
 

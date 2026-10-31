@@ -1,39 +1,20 @@
 {
-    "manifest_version": 3,
-
-    "name": "YouTube Groups",
-    "version": "1.0.0",
-
-    "description": "Группировка YouTube-каналов по подпискам",
-
-    "permissions": [
-        "storage"
-    ],
-
-    "host_permissions": [
-        "https://www.youtube.com/*"
-    ],
-
-    "action": {
-        "default_title": "YouTube Groups",
-        "default_popup": "popup.html"
-    },
-
-    "background": {
-        "service_worker": "background.js"
-    },
-
-    "content_scripts": [
-        {
-            "matches": [
-                "https://www.youtube.com/*"
-            ],
-            "js": [
-                "content.js"
-            ],
-            "css": [
-                "content.css"
-            ]
-        }
-    ]
+  "manifest_version": 3,
+  "name": "YouTube Groups",
+  "version": "1.0.0",
+  "description": "Группировка YouTube-каналов по подпискам",
+  "permissions": ["storage"],
+  "host_permissions": ["https://www.youtube.com/*"],
+  "action": {
+    "default_title": "YouTube Groups",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.youtube.com/*"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ]
 }
