@@ -5,6 +5,7 @@ import type { Group } from "../models/Group";
 import { StorageService, type StorageSnapshot } from "../storage/storage";
 
 let nextGroupId = 0;
+let revision = 0;
 let groups: Group[] = [];
 let channels: Channel[] = [];
 let collapsedGroupIds: number[] = [];
@@ -52,12 +53,12 @@ function render(): void {
         return;
     }
 
-    for (const group of groups) {
-        groupList.append(renderGroupItem(group));
-    }
+    groups.forEach((group, index) => {
+        groupList.append(renderGroupItem(group, index));
+    });
 }
 
-function renderGroupItem(group: Group): HTMLLIElement {
+function renderGroupItem(group: Group, index: number): HTMLLIElement {
     const item = document.createElement("li");
 
     const row = document.createElement("div");
@@ -76,6 +77,17 @@ function renderGroupItem(group: Group): HTMLLIElement {
 
     info.append(name, date);
 
+    const actions = document.createElement("div");
+    actions.className = "group-actions";
+    actions.append(
+        moveButton("↑", "Выше", index === 0, () => {
+            void moveGroup(group.id, -1);
+        }),
+        moveButton("↓", "Ниже", index === groups.length - 1, () => {
+            void moveGroup(group.id, 1);
+        }),
+    );
+
     const deleteButton = document.createElement("button");
     deleteButton.type = "button";
     deleteButton.className = "delete-btn";
@@ -83,8 +95,9 @@ function renderGroupItem(group: Group): HTMLLIElement {
     deleteButton.addEventListener("click", () => {
         void deleteGroup(group.id);
     });
+    actions.append(deleteButton);
 
-    row.append(info, deleteButton);
+    row.append(info, actions);
     item.append(row);
 
     const groupChannels = channels.filter((channel) => channel.groupId === group.id);
@@ -124,9 +137,21 @@ function renderGroupItem(group: Group): HTMLLIElement {
     return item;
 }
 
+function moveButton(label: string, hint: string, disabled: boolean, onClick: () => void): HTMLButtonElement {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "move-btn";
+    button.textContent = label;
+    button.title = hint;
+    button.disabled = disabled;
+    button.addEventListener("click", onClick);
+    return button;
+}
+
 async function persist(snapshot: StorageSnapshot): Promise<boolean> {
     try {
         await StorageService.saveAll(snapshot);
+        revision = snapshot.revision;
         return true;
     } catch (error) {
         console.error(error);
@@ -135,16 +160,23 @@ async function persist(snapshot: StorageSnapshot): Promise<boolean> {
     }
 }
 
+function nextSnapshot(patch: Omit<StorageSnapshot, "revision">): StorageSnapshot {
+    return {
+        ...patch,
+        revision: revision + 1,
+    };
+}
+
 async function deleteGroup(id: number): Promise<void> {
     const nextGroups = groups.filter((group) => group.id !== id);
     const nextChannels = channels.filter((channel) => channel.groupId !== id);
     const nextCollapsed = collapsedGroupIds.filter((groupId) => groupId !== id);
 
-    const saved = await persist({
+    const saved = await persist(nextSnapshot({
         groups: nextGroups,
         channels: nextChannels,
         collapsedGroupIds: nextCollapsed,
-    });
+    }));
 
     if (!saved) return;
 
@@ -156,11 +188,11 @@ async function deleteGroup(id: number): Promise<void> {
 
 async function removeChannel(channelId: string): Promise<void> {
     const nextChannels = channels.filter((channel) => channel.id !== channelId);
-    const saved = await persist({
+    const saved = await persist(nextSnapshot({
         groups,
         channels: nextChannels,
         collapsedGroupIds,
-    });
+    }));
 
     if (!saved) return;
 
@@ -169,17 +201,37 @@ async function removeChannel(channelId: string): Promise<void> {
     render();
 }
 
+async function moveGroup(groupId: number, direction: -1 | 1): Promise<void> {
+    const nextGroups = StorageService.reorder(groups, groupId, direction);
+    if (!nextGroups) return;
+
+    const saved = await persist(nextSnapshot({
+        groups: nextGroups,
+        channels,
+        collapsedGroupIds,
+    }));
+    if (!saved) return;
+
+    groups = nextGroups;
+    hideStatus();
+    render();
+}
+
 function applySnapshot(snapshot: StorageSnapshot): void {
     groups = snapshot.groups;
     channels = snapshot.channels;
     collapsedGroupIds = snapshot.collapsedGroupIds;
+    revision = snapshot.revision;
 
+    rememberGroupIds(groups);
+    render();
+}
+
+function rememberGroupIds(list: Group[]): void {
     nextGroupId = 0;
-    for (const group of groups) {
+    for (const group of list) {
         if (group.id >= nextGroupId) nextGroupId = group.id + 1;
     }
-
-    render();
 }
 
 async function addGroup(): Promise<void> {
@@ -192,11 +244,11 @@ async function addGroup(): Promise<void> {
     }
 
     const nextGroups = [...groups, createGroup(groupName)];
-    const saved = await persist({
+    const saved = await persist(nextSnapshot({
         groups: nextGroups,
         channels,
         collapsedGroupIds,
-    });
+    }));
 
     if (!saved) return;
 
@@ -217,6 +269,61 @@ createButton?.addEventListener("click", () => {
 groupInput?.addEventListener("keydown", (event) => {
     if (!(event instanceof KeyboardEvent) || event.key !== "Enter") return;
     void addGroup();
+});
+
+const exportButton = document.getElementById("exportButton");
+const importButton = document.getElementById("importButton");
+const importFile = document.getElementById("importFile");
+
+exportButton?.addEventListener("click", () => {
+    const file = new Blob([StorageService.toJSON({
+        groups,
+        channels,
+        collapsedGroupIds,
+        revision,
+    })], { type: "application/json" });
+    const url = URL.createObjectURL(file);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "youtube-groups.json";
+    link.click();
+    URL.revokeObjectURL(url);
+});
+
+importButton?.addEventListener("click", () => {
+    if (importFile instanceof HTMLInputElement) importFile.click();
+});
+
+importFile?.addEventListener("change", () => {
+    if (!(importFile instanceof HTMLInputElement)) return;
+    const file = importFile.files?.[0];
+    importFile.value = "";
+    if (!file) return;
+
+    void file.text().then(async (text) => {
+        const parsed = StorageService.parseImport(text);
+        if (!parsed) {
+            showStatus("Файл не похож на список групп", true);
+            return;
+        }
+
+        const saved = await persist(nextSnapshot({
+            groups: parsed.groups,
+            channels: parsed.channels,
+            collapsedGroupIds: parsed.collapsedGroupIds,
+        }));
+        if (!saved) return;
+
+        groups = parsed.groups;
+        channels = parsed.channels;
+        collapsedGroupIds = parsed.collapsedGroupIds;
+        rememberGroupIds(groups);
+        showStatus("Группы загружены из файла");
+        render();
+    }).catch((error: unknown) => {
+        console.error(error);
+        showStatus("Не удалось прочитать файл", true);
+    });
 });
 
 StorageService.onChanged(applySnapshot);

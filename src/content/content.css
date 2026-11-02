@@ -27,9 +27,16 @@ html[dark] #yt-groups-section .yt-groups-empty {
     color: #aaa;
 }
 
+#yt-groups-section .yt-group-row {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
 #yt-groups-section .yt-group-toggle {
     display: block;
-    width: 100%;
+    flex: 1;
+    min-width: 0;
     margin: 0;
     padding: 8px 4px;
     border: none;
@@ -40,6 +47,32 @@ html[dark] #yt-groups-section .yt-groups-empty {
     font-weight: 500;
     cursor: pointer;
     border-radius: 8px;
+}
+
+#yt-groups-section .yt-group-move {
+    width: 28px;
+    height: 28px;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+#yt-groups-section .yt-group-move:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+html[dark] #yt-groups-section .yt-group-move:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+#yt-groups-section .yt-group-move:disabled {
+    opacity: 0.35;
+    cursor: default;
 }
 
 #yt-groups-section .yt-group-channels {

@@ -15,19 +15,37 @@ export function isChannelPath(pathname: string): boolean {
     return (head === "channel" || head === "c" || head === "user") && parts.length >= 2;
 }
 
-export function readChannelInfo(allowHandleId = false): ChannelDraft | null {
+export function readChannelInfo(allowFallback = false): ChannelDraft | null {
     if (!isChannelPath(location.pathname)) return null;
 
-    const fromData = readYtInitialData();
+    const fromPage = readPublishedChannel();
+    const embedded = readEmbeddedChannel();
+    const fromData = fromPage.name || fromPage.id ? fromPage : embedded;
     const canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.href;
     const rawUrl = fromData.url || canonical || location.href;
     const url = channelRootUrl(rawUrl);
-    const name = fromData.name || readNameFromDom();
-    const id = fromData.id || channelIdFromUrl(url) || (allowHandleId ? fallbackIdFromUrl(url) : undefined);
+    const name = cleanChannelName(fromData.name) ?? (allowFallback ? readNameFromDom() : undefined);
+    const id = fromData.id
+        || channelIdFromUrl(canonical || url)
+        || (allowFallback ? fallbackIdFromUrl(url) : undefined);
 
     if (!id || !name) return null;
 
     return { id, name, url };
+}
+
+export function channelMatches(stored: { id: string; url: string }, draft: ChannelDraft): boolean {
+    if (stored.id === draft.id) return true;
+    if (channelRootUrl(stored.url) === channelRootUrl(draft.url)) return true;
+
+    const storedHandle = handleOf(stored.url) ?? handleOf(stored.id);
+    const pageHandle = handleOf(location.href) ?? handleOf(draft.url);
+    if (storedHandle && pageHandle && storedHandle.toLowerCase() === pageHandle.toLowerCase()) return true;
+
+    if (draft.id.startsWith("UC") && stored.url.includes(draft.id)) return true;
+    if (stored.id.startsWith("UC") && (draft.url.includes(stored.id) || location.href.includes(stored.id))) return true;
+
+    return false;
 }
 
 export function findChannelHeaderAnchor(): Element | null {
@@ -94,6 +112,17 @@ export function renderAddButton(
     host.append(button, menu);
 }
 
+const MAX_CHANNEL_NAME = 80;
+
+export function cleanChannelName(value: string | undefined): string | undefined {
+    if (!value) return undefined;
+
+    const name = value.replace(/\s+/g, " ").trim();
+    if (!name || name.length > MAX_CHANNEL_NAME || /^youtube$/i.test(name)) return undefined;
+
+    return name;
+}
+
 function groupName(groups: Group[], groupId: number): string {
     return groups.find((group) => group.id === groupId)?.name ?? "группе";
 }
@@ -104,56 +133,119 @@ interface YtChannelBits {
     url?: string;
 }
 
-function readYtInitialData(): YtChannelBits {
-    const data = (window as Window & { ytInitialData?: unknown }).ytInitialData;
-    if (!data || typeof data !== "object") return {};
+const CHANNEL_ATTR = "data-yt-groups-channel";
+const EMBEDDED_MARKER = "\"channelMetadataRenderer\":{";
 
-    const record = data as Record<string, unknown>;
-    const metadata = nested(record, ["metadata", "channelMetadataRenderer"]);
-    const header = nested(record, ["header", "c4TabbedHeaderRenderer"]);
+function readPublishedChannel(): YtChannelBits {
+    const raw = document.documentElement.getAttribute(CHANNEL_ATTR);
+    if (!raw) return {};
 
-    const id = stringField(metadata, "externalId") ?? stringField(header, "channelId");
-    const name = stringField(metadata, "title") ?? stringField(header, "title");
-    const url = stringField(metadata, "vanityChannelUrl")
-        ?? stringField(metadata, "channelUrl")
-        ?? stringField(header, "navigationEndpoint");
+    try {
+        const parsed = JSON.parse(raw) as unknown;
+        if (!isRecord(parsed)) return {};
+        return bitsFrom(parsed.id, parsed.name, parsed.url);
+    } catch {
+        return {};
+    }
+}
 
+let embeddedCache: { href: string; bits: YtChannelBits } | null = null;
+
+function readEmbeddedChannel(): YtChannelBits {
+    if (embeddedCache?.href === location.href) {
+        return embeddedMatchesPage(embeddedCache.bits) ? embeddedCache.bits : {};
+    }
+
+    const bits = scanEmbeddedChannel();
+    if (bits.id || bits.name) embeddedCache = { href: location.href, bits };
+    return embeddedMatchesPage(bits) ? bits : {};
+}
+
+function scanEmbeddedChannel(): YtChannelBits {
+    for (const script of document.scripts) {
+        const text = script.textContent ?? "";
+        const at = text.indexOf(EMBEDDED_MARKER);
+        if (at < 0) continue;
+
+        const slice = text.slice(at, at + 50000);
+        return bitsFrom(
+            jsonString(slice, "externalId"),
+            jsonString(slice, "title"),
+            jsonString(slice, "vanityChannelUrl") ?? jsonString(slice, "channelUrl"),
+        );
+    }
+
+    return {};
+}
+
+function bitsFrom(id: unknown, name: unknown, url: unknown): YtChannelBits {
     const bits: YtChannelBits = {};
-    if (id) bits.id = id;
-    if (name) bits.name = name;
-    if (url && url.startsWith("http")) bits.url = url;
+    if (typeof id === "string" && id.startsWith("UC")) bits.id = id;
+    if (typeof name === "string" && name.trim()) bits.name = name.trim();
+    if (typeof url === "string" && url.startsWith("http")) bits.url = url;
     return bits;
 }
 
-function nested(root: Record<string, unknown>, path: string[]): Record<string, unknown> | undefined {
-    let current: unknown = root;
-    for (const key of path) {
-        if (!current || typeof current !== "object") return undefined;
-        current = (current as Record<string, unknown>)[key];
+function embeddedMatchesPage(bits: YtChannelBits): boolean {
+    if (!bits.id && !bits.name) return false;
+    if (bits.id && (location.href.includes(bits.id) || document.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.href.includes(bits.id))) {
+        return true;
     }
-    if (!current || typeof current !== "object") return undefined;
-    return current as Record<string, unknown>;
+
+    const pageHandle = handleOf(location.href);
+    const dataHandle = bits.url ? handleOf(bits.url) : undefined;
+    return Boolean(pageHandle && dataHandle && pageHandle.toLowerCase() === dataHandle.toLowerCase());
 }
 
-function stringField(record: Record<string, unknown> | undefined, key: string): string | undefined {
-    const value = record?.[key];
-    return typeof value === "string" && value.trim() ? value.trim() : undefined;
+function jsonString(slice: string, key: string): string | undefined {
+    const token = `"${key}":"`;
+    const start = slice.indexOf(token);
+    if (start < 0) return undefined;
+
+    let raw = "";
+    let i = start + token.length;
+    while (i < slice.length) {
+        const ch = slice[i] ?? "";
+        if (ch === "\\") {
+            raw += ch + (slice[i + 1] ?? "");
+            i += 2;
+            continue;
+        }
+        if (ch === "\"") break;
+        raw += ch;
+        i += 1;
+    }
+
+    try {
+        const parsed = JSON.parse(`"${raw}"`) as unknown;
+        return typeof parsed === "string" ? parsed : undefined;
+    } catch {
+        return undefined;
+    }
+}
+
+function handleOf(value: string): string | undefined {
+    const match = /@[^\s/?#]+/u.exec(value);
+    return match?.[0];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null;
 }
 
 function readNameFromDom(): string | undefined {
     const selectors = [
+        "h1.dynamicTextViewModelH1",
+        "#page-header yt-dynamic-text-view-model h1",
         "ytd-channel-name #text",
-        "#page-header h1",
-        "yt-formatted-string.ytd-channel-name",
     ];
 
     for (const selector of selectors) {
-        const text = document.querySelector(selector)?.textContent?.trim();
-        if (text) return text;
+        const name = cleanChannelName(document.querySelector(selector)?.textContent ?? undefined);
+        if (name) return name;
     }
 
-    const title = document.title.replace(/\s+-\s+YouTube$/, "").trim();
-    return title || undefined;
+    return cleanChannelName(document.title.replace(/\s*[-–—]\s*YouTube\s*$/i, ""));
 }
 
 function channelIdFromUrl(url: string): string | undefined {
@@ -181,7 +273,7 @@ function fallbackIdFromUrl(url: string): string | undefined {
     return undefined;
 }
 
-function channelRootUrl(href: string): string {
+export function channelRootUrl(href: string): string {
     try {
         const parsed = new URL(href, "https://www.youtube.com");
         const parts = parsed.pathname.split("/").filter(Boolean);
